@@ -1,12 +1,6 @@
 import { ReactNode } from "react";
 import { WagmiConfig } from "wagmi";
-import {
-  polygon,
-  polygonMumbai,
-  mainnet,
-  holesky,
-  localhost,
-} from "wagmi/chains";
+import { polygon, polygonMumbai, mainnet, holesky, localhost, goerli, sepolia } from "wagmi/chains";
 import { createWeb3Modal, defaultWagmiConfig } from "@web3modal/wagmi/react";
 
 const projectId = "20bd2ed396d80502980b6d2a3fb425f4";
@@ -18,10 +12,8 @@ const metadata = {
   icons: ["/logo.svg"],
 };
 
-const chains = [polygon, polygonMumbai, mainnet, holesky, localhost];
+const chains = [polygon, polygonMumbai, mainnet, holesky, localhost, goerli, sepolia];
 const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
-
-console.log("holesky: ", holesky);
 
 createWeb3Modal({
   wagmiConfig,

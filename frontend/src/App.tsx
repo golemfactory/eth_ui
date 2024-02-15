@@ -9,7 +9,27 @@ import validator from "@rjsf/validator-ajv8";
 import { BlockchainProvider } from "./blockchainProvider";
 import { BlockChainManager } from "./BlockChainManager";
 import { useRef, useState } from "react";
+import { polygon, polygonMumbai, mainnet, holesky, localhost, goerli, sepolia } from "wagmi/chains";
 
+//TODO figure out how to specify enumNames for form generator
+const nameToChain = (name: string) => {
+  switch (name) {
+    case "Mainnet":
+      return mainnet;
+    case "Polygon":
+      return polygon;
+    case "Mumbai":
+      return polygonMumbai;
+    case "Holesky":
+      return holesky;
+    case "Goerli":
+      return goerli;
+    case "Sepolia":
+      return sepolia;
+    case "Localhost":
+      return localhost;
+  }
+};
 const uploadABISchema: RJSFSchema = {
   title: "Play with contract ABI",
   type: "object",
@@ -25,7 +45,7 @@ const uploadABISchema: RJSFSchema = {
       description: "The ABI of the contract",
     },
     network: {
-      enum: ["mainnet", "polygon", "holesky", "localhost"],
+      enum: ["Mainnet", "Polygon", "Mumbai", "Holesky", "Goerli", "Sepolia", "Localhost"],
     },
   },
   required: ["abi"],
@@ -34,6 +54,10 @@ const uploadABISchema: RJSFSchema = {
 const uploadABiUISchema = {
   abi: {
     "ui:widget": "file",
+  },
+  network: {
+    "ui:widget": "select",
+    "ui:options": {},
   },
 };
 
@@ -73,19 +97,18 @@ const MethodForm = function ({
   schema,
   abi,
 }: {
-  network: string;
+  network: number;
   address: string;
   schema: RJSFSchema;
   abi: unknown;
 }) {
-  console.log("abu", abi);
   const contract = useContractWrite({
     //@ts-ignore
-    address: "0x866549a316c1290f1937B89be27a160f2F0db016",
+    address: address,
     //@ts-ignore
     abi,
     functionName: schema.title,
-    args: [1],
+    chainId: network,
   });
 
   return (
@@ -93,9 +116,13 @@ const MethodForm = function ({
       <Form
         schema={schema}
         validator={validator}
-        onSubmit={() => {
-          console.log(network, address);
-          contract.writeAsync();
+        className="text-black bg-lightblue-50 p-10 rounded-lg border-2 border-lightblue-100"
+        onSubmit={(data) => {
+          console.log(data.formData);
+          contract.writeAsync({
+            //@ts-ignore
+            args: Object.values(data.formData),
+          });
         }}
       />
     </>
@@ -104,6 +131,9 @@ const MethodForm = function ({
 
 function App() {
   const [functions, setFunctions] = useState([]);
+  const [selectedNetwork, setSelectedNetwork] = useState(1);
+  const [address, setAddress] = useState("");
+
   const abiRef = useRef();
   return (
     <BlockchainProvider>
@@ -112,29 +142,27 @@ function App() {
           <BlockChainManager />
           <div className="mt-6"></div>
           <Form
+            className="text-black"
             schema={uploadABISchema}
             uiSchema={uploadABiUISchema}
             validator={validator}
             onSubmit={(data) => {
-              console.log("da", data);
+              //@ts-ignore
+              setSelectedNetwork(nameToChain(data.formData.network).id);
+              setAddress(data.formData.address);
               fetch(data.formData.abi)
                 .then((res) => res.json())
                 .then((abi) => {
                   abiRef.current = abi;
-                  const allFunctions = abi.filter(
-                    (x: { type: string }) => x.type === "function"
-                  );
+                  const allFunctions = abi.filter((x: { type: string }) => x.type === "function");
 
-                  const contractFunctions = allFunctions.map(
-                    (fn: { inputs: ABIInput[]; name: string }) => {
-                      return {
-                        title: fn.name,
-                        type: "object",
-                        properties: fn.inputs.map(toProperty),
-                      };
-                    }
-                  );
-                  console.log(contractFunctions);
+                  const contractFunctions = allFunctions.map((fn: { inputs: ABIInput[]; name: string }) => {
+                    return {
+                      title: fn.name,
+                      type: "object",
+                      properties: fn.inputs.map(toProperty),
+                    };
+                  });
                   setFunctions(contractFunctions);
                 });
             }}
@@ -143,12 +171,7 @@ function App() {
         {functions.map((fn) => {
           return (
             <div className="col-span-6 p-4 border rounded-lg">
-              <MethodForm
-                abi={abiRef.current}
-                schema={fn}
-                network="dupa"
-                address="fdfd"
-              />{" "}
+              <MethodForm abi={abiRef.current} schema={fn} network={selectedNetwork} address={address} />{" "}
             </div>
           );
         })}
